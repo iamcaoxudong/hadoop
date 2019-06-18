@@ -31,6 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -101,7 +102,6 @@ public final class RandomKeyGenerator implements Callable<Void> {
 
   private static final int QUANTILES = 10;
 
-  private static final int CHECK_INTERVAL_MILLIS = 5000;
 
   private byte[] keyValueBuffer = null;
 
@@ -112,7 +112,7 @@ public final class RandomKeyGenerator implements Callable<Void> {
   private static final Logger LOG =
       LoggerFactory.getLogger(RandomKeyGenerator.class);
 
-  private boolean completed = false;
+  private AtomicBoolean completed = new AtomicBoolean(false);
   private Exception exception = null;
 
   @Option(names = "--numOfThreads",
@@ -301,17 +301,13 @@ public final class RandomKeyGenerator implements Callable<Void> {
     progressbar.start();
 
     // wait until all keys are added or exception occurred.
-    while ((numberOfKeysAdded.get() != numOfVolumes * numOfBuckets * numOfKeys)
-           && exception == null) {
-      try {
-        Thread.sleep(CHECK_INTERVAL_MILLIS);
-      } catch (InterruptedException e) {
-        throw e;
+    synchronized (completed) {
+      while (!completed.get()) {
+        completed.wait();
       }
     }
     executor.shutdown();
     executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-    completed = true;
 
     if (exception != null) {
       progressbar.terminate();
@@ -604,6 +600,11 @@ public final class RandomKeyGenerator implements Callable<Void> {
       } catch (IOException e) {
         exception = e;
         LOG.error("Could not create volume", e);
+
+        completed.set(true);
+        synchronized (completed) {
+          completed.notify();
+        }
         return;
       }
 
@@ -645,6 +646,11 @@ public final class RandomKeyGenerator implements Callable<Void> {
       } catch (IOException e) {
         exception = e;
         LOG.error("Could not create bucket ", e);
+
+        completed.set(true);
+        synchronized (completed) {
+          completed.notify();
+        }
         return;
       }
 
@@ -700,7 +706,13 @@ public final class RandomKeyGenerator implements Callable<Void> {
                       .update(keyWriteDuration);
             keyWriteTime.getAndAdd(keyWriteDuration);
             totalBytesWritten.getAndAdd(keySize);
-            numberOfKeysAdded.getAndIncrement();
+            if (numberOfKeysAdded.incrementAndGet() ==
+                numOfVolumes * numOfBuckets * numOfKeys) {
+              completed.set(true);
+              synchronized (completed) {
+                completed.notify();
+              }
+            }
           }
         }
 
@@ -993,7 +1005,7 @@ public final class RandomKeyGenerator implements Callable<Void> {
       DigestUtils dig = new DigestUtils(DIGEST_ALGORITHM);
 
       while (true) {
-        if (completed && validationQueue.isEmpty()) {
+        if (completed.get() && validationQueue.isEmpty()) {
           return;
         }
 
@@ -1066,4 +1078,25 @@ public final class RandomKeyGenerator implements Callable<Void> {
   public int getThreadPoolSize() {
     return threadPoolSize;
   }
+
+  @VisibleForTesting
+  public long getVolumeCreationTime() {
+    return volumeCreationTime.get();
+  }
+
+  @VisibleForTesting
+  public long getBucketCreationTime() {
+    return bucketCreationTime.get();
+  }
+
+  @VisibleForTesting
+  public long getKeyCreationTime() {
+    return keyCreationTime.get();
+  }
+
+  @VisibleForTesting
+  public long getKeyWriteTime() {
+    return keyWriteTime.get();
+  }
+
 }

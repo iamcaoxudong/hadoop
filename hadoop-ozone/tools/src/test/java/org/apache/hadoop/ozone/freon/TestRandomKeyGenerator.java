@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.ozone.freon;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -140,6 +142,31 @@ public class TestRandomKeyGenerator {
     randomKeyGenerator.setNumOfThreads(10);
     randomKeyGenerator.call();
     Assert.assertEquals(10, randomKeyGenerator.getThreadPoolSize());
+    Assert.assertEquals(1, randomKeyGenerator.getNumberOfKeysAdded());
+  }
+
+  @Test
+  public void testTotalExecTime() throws Exception {
+    RandomKeyGenerator randomKeyGenerator =
+        new RandomKeyGenerator((OzoneConfiguration) cluster.getConf());
+    randomKeyGenerator.setNumOfVolumes(1);
+    randomKeyGenerator.setNumOfBuckets(1);
+    randomKeyGenerator.setNumOfKeys(1);
+    randomKeyGenerator.setFactor(ReplicationFactor.THREE);
+    randomKeyGenerator.setType(ReplicationType.RATIS);
+
+    long startTime = System.nanoTime();
+    randomKeyGenerator.call();
+    long totalExecTime = System.nanoTime() - startTime;
+
+    long freonExecTime = randomKeyGenerator.getVolumeCreationTime()
+        + randomKeyGenerator.getBucketCreationTime()
+        + randomKeyGenerator.getKeyCreationTime()
+        + randomKeyGenerator.getKeyWriteTime();
+
+    // tolerate 1s of error at most
+    Assert.assertTrue(Math.abs(totalExecTime - freonExecTime)
+                      < TimeUnit.SECONDS.toNanos(1));
     Assert.assertEquals(1, randomKeyGenerator.getNumberOfKeysAdded());
   }
 }
