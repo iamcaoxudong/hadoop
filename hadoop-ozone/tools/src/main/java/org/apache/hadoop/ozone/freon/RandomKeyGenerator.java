@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.ozone.freon;
 
+import org.apache.lucene.util.RamUsageEstimator;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -271,7 +273,9 @@ public final class RandomKeyGenerator implements Callable<Void> {
     LOG.info("Buffer size: {} bytes", bufferSize);
     for (int i = 0; i < numOfVolumes; i++) {
       String volumeName = "vol-" + i + "-" + RandomStringUtils.randomNumeric(5);
-      executor.submit(new VolumeProcessor(volumeName));
+      VolumeProcessor vp = new VolumeProcessor(volumeName);
+      System.out.println("sizeof VolumeProcessor: " + RamUsageEstimator.shallowSizeOf(vp));
+      executor.submit(vp);
     }
 
     Thread validator = null;
@@ -611,6 +615,7 @@ public final class RandomKeyGenerator implements Callable<Void> {
         String bucketName = "bucket-" + i + "-" +
             RandomStringUtils.randomNumeric(5);
         BucketProcessor bp = new BucketProcessor(volume, bucketName);
+        System.out.println("sizeof BucketProcessor: " + RamUsageEstimator.shallowSizeOf(bp));
         executor.submit(bp);
       }
     }
@@ -651,6 +656,7 @@ public final class RandomKeyGenerator implements Callable<Void> {
       for (int i = 0; i < numOfKeys; i++) {
         String keyName = "key-" + i + "-" + RandomStringUtils.randomNumeric(5);
         KeyProcessor kp = new KeyProcessor(bucket, keyName);
+        System.out.println("sizeof KeyProcessor: " + RamUsageEstimator.shallowSizeOf(kp));
         executor.submit(kp);
       }
     }
