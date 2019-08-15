@@ -21,20 +21,18 @@ import org.apache.hadoop.fs.FileSystemTestHelper;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.server.namenode.NNStorage.NameNodeFile;
+import org.apache.hadoop.hdfs.server.namenode.TestTransferFsImage.TestImageTransferServlet;
 import org.apache.hadoop.http.HttpServer2;
 import org.apache.hadoop.http.HttpServerFunctionalTest;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class TestImage {
+  byte[] buffer = DFSUtil.string2Bytes(RandomStringUtils.randomAscii(1024*1024*10));
 
-  /**
-   * Test to verify the timeout of Image upload
-   */
+  
   @Test
-  public void testImage() throws Exception {
-    byte[] buffer = DFSUtil.string2Bytes(RandomStringUtils.randomAscii(1024*1024*10));
-
+  public void testImageUploadTimeout() throws Exception {
     Configuration conf = new HdfsConfiguration();
     NNStorage mockStorage = Mockito.mock(NNStorage.class);
     HttpServer2 testServer = HttpServerFunctionalTest.createServer("hdfs");

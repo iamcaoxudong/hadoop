@@ -34,6 +34,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystemTestHelper;
 import org.apache.hadoop.hdfs.DFSUtil;
@@ -148,6 +149,8 @@ public class TestTransferFsImage {
    */
   @Test
   public void testImageUploadTimeout() throws Exception {
+    byte[] buffer = DFSUtil.string2Bytes(RandomStringUtils.randomAscii(1024*1024*10));
+
     Configuration conf = new HdfsConfiguration();
     NNStorage mockStorage = Mockito.mock(NNStorage.class);
     HttpServer2 testServer = HttpServerFunctionalTest.createServer("hdfs");
@@ -164,7 +167,7 @@ public class TestTransferFsImage {
 
       File mockImageFile = File.createTempFile("image", "", tmpDir);
       FileOutputStream imageFile = new FileOutputStream(mockImageFile);
-      imageFile.write("data".getBytes());
+      imageFile.write(buffer);
       imageFile.close();
       Mockito.when(
           mockStorage.findImageFile(Mockito.any(NameNodeFile.class),
