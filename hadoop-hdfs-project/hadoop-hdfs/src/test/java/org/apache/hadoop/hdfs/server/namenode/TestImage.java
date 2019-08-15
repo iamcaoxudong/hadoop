@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -89,9 +90,13 @@ public class TestImage {
     protected void doPut(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
       synchronized (this) {
+        ServletContext context = getServletContext();
+        final FSImage nnImage = NameNodeHttpServer.getFsImageFromContext(context);
+        if (nnImage != null) {
           resp.sendError(HttpServletResponse.SC_EXPECTATION_FAILED,
               "Nameode is currently not in a state which can "
                   + "accept uploads of new fsimages.");
+        }
       }
     }
   }
