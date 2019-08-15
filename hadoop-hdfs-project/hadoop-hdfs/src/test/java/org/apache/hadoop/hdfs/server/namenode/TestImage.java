@@ -30,7 +30,6 @@ public class TestImage {
   /**
    * Test to verify the timeout of Image upload
    */
-  @Test(timeout = 10000)
   public void testImage() throws Exception {
     byte[] buffer = DFSUtil.string2Bytes(RandomStringUtils.randomAscii(1024*1024*10));
 
